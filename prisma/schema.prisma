@@ -1,0 +1,109 @@
+generator client {
+  provider      = "prisma-client-js"
+  // "native" for local dev; "rhel-openssl-3.0.x" for Vercel's Node 20 runtime.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Runtime queries go through the pooled (PgBouncer) connection — port 6543 on Supabase.
+  url       = env("DATABASE_URL")
+  // Migrations / db push need a direct (non-pooled) connection — port 5432 on Supabase.
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  name          String
+  passwordHash  String
+  role          String       @default("VIEWER") // "ADMIN" | "DEPT_HEAD" | "VIEWER"
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // If DEPT_HEAD, which departments they head
+  headsDepartments Department[] @relation("DepartmentHead")
+  activityLogs     ActivityLog[]
+  notifications    Notification[]
+}
+
+model Department {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  headId      String?
+  head        User?    @relation("DepartmentHead", fields: [headId], references: [id], onDelete: SetNull)
+  teams       Team[]
+  roleTypes   RoleType[] @relation("DepartmentRoleTypes")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Team {
+  id           String     @id @default(cuid())
+  name         String
+  description  String?
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  members      Member[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([departmentId, name])
+}
+
+model Member {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  roleTypeId String?
+  roleType  RoleType? @relation(fields: [roleTypeId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teamId])
+  @@index([email])
+}
+
+model RoleType {
+  id           String      @id @default(cuid())
+  name         String
+  description  String?
+  scope        String      @default("GLOBAL") // "GLOBAL" | "DEPARTMENT"
+  departmentId String?
+  department   Department? @relation("DepartmentRoleTypes", fields: [departmentId], references: [id], onDelete: Cascade)
+  members      Member[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@unique([name, departmentId])
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String   // e.g. "CREATE_TEAM"
+  entityType String   // e.g. "Team", "Member"
+  entityId   String?
+  summary    String   // human-readable
+  metadata   String?  // JSON string
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
