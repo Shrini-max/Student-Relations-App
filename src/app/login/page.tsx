@@ -17,9 +17,6 @@ export default function LoginPage() {
             <LoginForm />
           </Suspense>
         </div>
-        <p className="text-center text-xs text-gray-500 mt-4">
-          Demo logins &mdash; admin@paradox.local / admin123
-        </p>
       </div>
     </div>
   );
