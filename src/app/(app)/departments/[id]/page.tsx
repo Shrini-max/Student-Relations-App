@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { canManageDepartment, canViewDepartment, requireUser } from "@/lib/rbac";
-import { createTeam, deleteTeam } from "@/actions/teams";
-import { ConfirmButton } from "@/components/ConfirmButton";
+import { createTeam } from "@/actions/teams";
 import { NewTeamButton } from "./NewTeamButton";
+import { DeleteTeamButton } from "./DeleteTeamButton";
 import { EditDepartmentButton } from "./EditDepartmentButton";
 import { updateDepartment } from "@/actions/departments";
 
@@ -96,15 +96,7 @@ export default async function DepartmentDetailPage({ params }: { params: { id: s
                         Open
                       </Link>
                       {canManage && (
-                        <form action={deleteTeam}>
-                          <input type="hidden" name="id" value={t.id} />
-                          <ConfirmButton
-                            confirmText={`Delete team "${t.name}" and all its members?`}
-                            className="btn-ghost !px-2 !py-1 text-xs text-red-600 hover:bg-red-50"
-                          >
-                            Delete
-                          </ConfirmButton>
-                        </form>
+                        <DeleteTeamButton teamId={t.id} teamName={t.name} />
                       )}
                     </div>
                   </td>

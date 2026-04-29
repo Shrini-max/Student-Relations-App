@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/Modal";
+import { DeleteTeamModal } from "@/components/DeleteTeamModal";
 import {
   Building2,
   ChevronRight,
@@ -43,6 +44,7 @@ export function DeptHeadDashboard({
   const router = useRouter();
   const [newTeamFor, setNewTeamFor] = useState<string | null>(null);
   const [editTeam, setEditTeam] = useState<{ id: string; name: string; description: string | null } | null>(null);
+  const [deleteTeamTarget, setDeleteTeamTarget] = useState<Team | null>(null);
   const [, startTransition] = useTransition();
 
   async function submitCreateTeam(e: React.FormEvent<HTMLFormElement>) {
@@ -74,7 +76,13 @@ export function DeptHeadDashboard({
   }
 
   function onDeleteTeam(t: Team) {
-    if (!window.confirm(`Delete team "${t.name}" and all ${t.memberCount} member(s)?`)) return;
+    setDeleteTeamTarget(t);
+  }
+
+  function handleConfirmDelete() {
+    if (!deleteTeamTarget) return;
+    const t = deleteTeamTarget;
+    setDeleteTeamTarget(null);
     const fd = new FormData();
     fd.set("id", t.id);
     startTransition(async () => {
@@ -316,6 +324,13 @@ export function DeptHeadDashboard({
           </form>
         )}
       </Modal>
+
+      <DeleteTeamModal
+        teamName={deleteTeamTarget?.name ?? ""}
+        open={!!deleteTeamTarget}
+        onClose={() => setDeleteTeamTarget(null)}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }
