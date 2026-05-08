@@ -5,6 +5,9 @@ import { Providers } from "@/components/Providers";
 export const metadata: Metadata = {
   title: "Paradox '26 | Team Management",
   description: "Manage departments, teams, and members for Paradox.",
+  icons: {
+    icon: '/icon.png', // This tells the browser exactly where to look
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
