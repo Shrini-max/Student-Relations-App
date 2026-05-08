@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "Paradox | Team Management",
+  title: "Paradox '26 | Team Management",
   description: "Manage departments, teams, and members for Paradox.",
 };
 
