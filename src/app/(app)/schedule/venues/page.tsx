@@ -61,7 +61,7 @@ export default async function VenuesPage() {
                   <td>{v._count.events}</td>
                   <td className="text-right">
                     {v._count.events === 0 && (
-                      <form action={deleteVenue}>
+                      <form action={async (fd) => { await deleteVenue(fd); }}>
                         <input type="hidden" name="id" value={v.id} />
                         <ConfirmButton
                           confirmText={`Delete venue "${v.name}"?`}

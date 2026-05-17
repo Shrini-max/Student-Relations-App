@@ -70,7 +70,7 @@ export default async function CategoriesPage() {
                   <td>{c._count.events}</td>
                   <td className="text-right">
                     {c._count.events === 0 && (
-                      <form action={deleteCategory}>
+                      <form action={async (fd) => { await deleteCategory(fd); }}>
                         <input type="hidden" name="id" value={c.id} />
                         <ConfirmButton
                           confirmText={`Delete category "${c.name}"?`}
