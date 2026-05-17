@@ -9,7 +9,7 @@ import { z } from "zod";
 const EventSchema = z.object({
   title: z.string().min(1).max(120),
   description: z.string().max(500).optional().nullable(),
-  day: z.coerce.number().int().min(1).max(6),
+  day: z.coerce.number().int().min(0).max(5),
   startTime: z.string().regex(/^\d{2}:\d{2}$/),
   endTime: z.string().regex(/^\d{2}:\d{2}$/),
   venueId: z.string().min(1),
@@ -215,7 +215,7 @@ export async function importScheduleFromCSV(formData: FormData): Promise<Schedul
     const description = row["Description"]?.trim() || null;
 
     if (!title) { skipped++; continue; }
-    if (isNaN(dayRaw) || dayRaw < 1 || dayRaw > 6) { errors.push(`Row ${rowNum}: Invalid day "${row["Day"]}" (must be 1–6).`); continue; }
+    if (isNaN(dayRaw) || dayRaw < 0 || dayRaw > 5) { errors.push(`Row ${rowNum}: Invalid day "${row["Day"]}" (must be 0–5).`); continue; }
     if (!startTime || !/^\d{2}:\d{2}$/.test(startTime)) { errors.push(`Row ${rowNum}: Invalid start time "${startTime}" (use HH:MM).`); continue; }
     if (!endTime || !/^\d{2}:\d{2}$/.test(endTime)) { errors.push(`Row ${rowNum}: Invalid end time "${endTime}" (use HH:MM).`); continue; }
     if (timeToMinutes(startTime) >= timeToMinutes(endTime)) { errors.push(`Row ${rowNum}: Start time must be before end time.`); continue; }

@@ -5,12 +5,12 @@ import { ScheduleClient } from "./ScheduleClient";
 export const dynamic = "force-dynamic";
 
 const FEST_DAYS = [
-  { day: 1, label: "Day 1", date: "Jun 9" },
-  { day: 2, label: "Day 2", date: "Jun 10" },
-  { day: 3, label: "Day 3", date: "Jun 11" },
-  { day: 4, label: "Day 4", date: "Jun 12" },
-  { day: 5, label: "Day 5", date: "Jun 13" },
-  { day: 6, label: "Day 6", date: "Jun 14" },
+  { day: 0, label: "Day 0", date: "Jun 9" },
+  { day: 1, label: "Day 1", date: "Jun 10" },
+  { day: 2, label: "Day 2", date: "Jun 11" },
+  { day: 3, label: "Day 3", date: "Jun 12" },
+  { day: 4, label: "Day 4", date: "Jun 13" },
+  { day: 5, label: "Day 5", date: "Jun 14" },
 ];
 
 export default async function SchedulePage() {
