@@ -107,3 +107,51 @@ model Notification {
 
   @@index([userId, read])
 }
+
+model Venue {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  capacity Int?
+  events   Event[]
+  createdAt DateTime @default(now())
+}
+
+model EventCategory {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  color  String  @default("#6366f1")
+  events Event[]
+  createdAt DateTime @default(now())
+}
+
+model Event {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  day         Int
+  startTime   String
+  endTime     String
+  venueId     String
+  venue       Venue         @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  categoryId  String
+  category    EventCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  checkins    EventCheckin[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([day])
+  @@index([venueId])
+}
+
+model EventCheckin {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name        String
+  rollNo      String?
+  teamName    String?
+  checkedInAt DateTime @default(now())
+
+  @@index([eventId])
+  @@index([rollNo])
+}

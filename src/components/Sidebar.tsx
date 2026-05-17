@@ -12,6 +12,7 @@ import {
   Tags,
   FileClock,
   Bell,
+  CalendarDays,
 } from "lucide-react";
 
 type Role = "ADMIN" | "DEPT_HEAD" | "VIEWER";
@@ -23,6 +24,7 @@ const nav = [
   { href: "/roles", label: "Role Types", icon: Tags, roles: ["ADMIN"] as Role[] },
   { href: "/admin", label: "Admin Panel", icon: ShieldCheck, roles: ["ADMIN"] as Role[] },
   { href: "/logs", label: "Activity Logs", icon: FileClock, roles: ["ADMIN"] as Role[] },
+  { href: "/schedule", label: "Event Schedule", icon: CalendarDays, roles: ["ADMIN", "DEPT_HEAD", "VIEWER"] as Role[] },
   { href: "/notifications", label: "Notifications", icon: Bell, roles: ["ADMIN", "DEPT_HEAD", "VIEWER"] as Role[] },
 ];
 
