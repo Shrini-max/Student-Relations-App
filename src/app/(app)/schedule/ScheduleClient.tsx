@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
-import { createEvent, updateEvent, deleteEvent } from "@/actions/schedule";
-import { Plus, Pencil, Trash2, Calendar, MapPin, Clock, Filter, Download } from "lucide-react";
+import { createEvent, updateEvent, deleteEvent, importScheduleFromCSV } from "@/actions/schedule";
+import type { ScheduleImportResult } from "@/actions/schedule";
+import { Plus, Pencil, Trash2, Calendar, MapPin, Filter, Download, Upload, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import Papa from "papaparse";
 
 interface FestEvent {
@@ -42,10 +43,16 @@ export function ScheduleClient({ events, venues, categories, festDays, canEdit, 
   const [filterVenue, setFilterVenue] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState("");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importResult, setImportResult] = useState<ScheduleImportResult | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isImporting, startImportTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openCreate = () => {
     setForm({ ...EMPTY_FORM, day: String(activeDay), venueId: venues[0]?.id ?? "", categoryId: categories[0]?.id ?? "" });
@@ -82,6 +89,30 @@ export function ScheduleClient({ events, venues, categories, festDays, canEdit, 
     .filter((e) => !filterVenue || e.venueId === filterVenue)
     .filter((e) => !filterCategory || e.categoryId === filterCategory);
 
+  const downloadTemplate = () => {
+    const csv = Papa.unparse({
+      fields: ["Title", "Day", "Start Time", "End Time", "Venue", "Category", "Description"],
+      data: [["Opening Ceremony", "1", "09:00", "10:00", "Main Stage", "Cultural", "Inauguration of Paradox '26"]],
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "schedule_template.csv";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  const handleImport = () => {
+    if (!importFile) return;
+    const fd = new FormData();
+    fd.append("csvFile", importFile);
+    startImportTransition(async () => {
+      const result = await importScheduleFromCSV(fd);
+      setImportResult(result);
+      if (result.imported > 0) setImportFile(null);
+    });
+  };
+
   const exportCSV = () => {
     const rows = events.map((e) => ({
       Day: e.day,
@@ -114,9 +145,14 @@ export function ScheduleClient({ events, venues, categories, festDays, canEdit, 
             <Download className="w-4 h-4" /> Export CSV
           </button>
           {canEdit && (
-            <button onClick={openCreate} className="btn-primary">
-              <Plus className="w-4 h-4" /> Add Event
-            </button>
+            <>
+              <button onClick={() => { setShowImport(true); setImportResult(null); setImportFile(null); }} className="btn-secondary gap-1.5">
+                <Upload className="w-4 h-4" /> Import CSV
+              </button>
+              <button onClick={openCreate} className="btn-primary">
+                <Plus className="w-4 h-4" /> Add Event
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -222,7 +258,89 @@ export function ScheduleClient({ events, venues, categories, festDays, canEdit, 
         </div>
       )}
 
-      {/* Modal */}
+      {/* Import Modal */}
+      {showImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Import Schedule from CSV</h2>
+              <button onClick={() => setShowImport(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+
+            <p className="text-sm text-gray-500">
+              Required columns: <span className="font-mono text-xs bg-gray-100 px-1 rounded">Title</span>{" "}
+              <span className="font-mono text-xs bg-gray-100 px-1 rounded">Day</span>{" "}
+              <span className="font-mono text-xs bg-gray-100 px-1 rounded">Start Time</span>{" "}
+              <span className="font-mono text-xs bg-gray-100 px-1 rounded">End Time</span>{" "}
+              <span className="font-mono text-xs bg-gray-100 px-1 rounded">Venue</span>{" "}
+              <span className="font-mono text-xs bg-gray-100 px-1 rounded">Category</span>.
+              Venues and categories are auto-created if they don't exist.
+            </p>
+
+            <button onClick={downloadTemplate} className="btn-secondary w-full gap-1.5 text-sm">
+              <Download className="w-4 h-4" /> Download Template CSV
+            </button>
+
+            {/* Drop zone */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                isDragging ? "border-brand-500 bg-brand-50" : "border-gray-200 hover:border-gray-400"
+              }`}
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f?.name.endsWith(".csv")) setImportFile(f); }}
+            >
+              <Upload className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+              {importFile ? (
+                <div>
+                  <p className="font-medium text-sm">{importFile.name}</p>
+                  <p className="text-xs text-gray-400">{(importFile.size / 1024).toFixed(1)} KB — click to change</p>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">{isDragging ? "Drop it here!" : "Click to select or drag & drop a CSV"}</p>
+              )}
+              <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) setImportFile(f); }} />
+            </div>
+
+            {/* Import result */}
+            {importResult && (
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-green-700">
+                  <CheckCircle className="w-4 h-4" />
+                  <span>{importResult.imported} events imported</span>
+                </div>
+                {importResult.skipped > 0 && (
+                  <div className="flex items-center gap-2 text-yellow-600">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>{importResult.skipped} rows skipped (missing title)</span>
+                  </div>
+                )}
+                {importResult.errors.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 text-red-600 mb-1">
+                      <XCircle className="w-4 h-4" />
+                      <span>{importResult.errors.length} errors</span>
+                    </div>
+                    <ul className="text-xs text-red-600 space-y-0.5 pl-6 list-disc">
+                      {importResult.errors.map((e, i) => <li key={i}>{e}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button className="btn-secondary" onClick={() => setShowImport(false)}>Close</button>
+              <button className="btn-primary" onClick={handleImport} disabled={!importFile || isImporting}>
+                {isImporting ? "Importing..." : "Import"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Event Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">

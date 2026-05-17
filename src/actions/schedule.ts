@@ -175,3 +175,85 @@ export async function deleteCategory(formData: FormData): Promise<{ error?: stri
   revalidatePath("/schedule/categories");
   return {};
 }
+
+// --- CSV Import ---
+export interface ScheduleImportResult {
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
+export async function importScheduleFromCSV(formData: FormData): Promise<ScheduleImportResult> {
+  const user = await requireAdmin();
+  const file = formData.get("csvFile") as File | null;
+  if (!file || file.size === 0) return { imported: 0, skipped: 0, errors: ["No file provided."] };
+
+  const Papa = (await import("papaparse")).default;
+  const text = await file.text();
+  const parsed = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (h) => h.trim(),
+  });
+
+  if (parsed.errors.length > 0) {
+    return { imported: 0, skipped: 0, errors: parsed.errors.slice(0, 5).map((e) => `Row ${e.row}: ${e.message}`) };
+  }
+
+  let imported = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (const [i, row] of parsed.data.entries()) {
+    const rowNum = i + 2;
+    const title = row["Title"]?.trim();
+    const dayRaw = parseInt(row["Day"] ?? "");
+    const startTime = row["Start Time"]?.trim();
+    const endTime = row["End Time"]?.trim();
+    const venueName = row["Venue"]?.trim();
+    const categoryName = row["Category"]?.trim();
+    const description = row["Description"]?.trim() || null;
+
+    if (!title) { skipped++; continue; }
+    if (isNaN(dayRaw) || dayRaw < 1 || dayRaw > 6) { errors.push(`Row ${rowNum}: Invalid day "${row["Day"]}" (must be 1–6).`); continue; }
+    if (!startTime || !/^\d{2}:\d{2}$/.test(startTime)) { errors.push(`Row ${rowNum}: Invalid start time "${startTime}" (use HH:MM).`); continue; }
+    if (!endTime || !/^\d{2}:\d{2}$/.test(endTime)) { errors.push(`Row ${rowNum}: Invalid end time "${endTime}" (use HH:MM).`); continue; }
+    if (timeToMinutes(startTime) >= timeToMinutes(endTime)) { errors.push(`Row ${rowNum}: Start time must be before end time.`); continue; }
+    if (!venueName) { errors.push(`Row ${rowNum}: Venue is required.`); continue; }
+    if (!categoryName) { errors.push(`Row ${rowNum}: Category is required.`); continue; }
+
+    try {
+      // Auto-create venue and category if they don't exist
+      const venue = await prisma.venue.upsert({
+        where: { name: venueName },
+        update: {},
+        create: { name: venueName },
+      });
+      const category = await prisma.eventCategory.upsert({
+        where: { name: categoryName },
+        update: {},
+        create: { name: categoryName, color: "#6366f1" },
+      });
+
+      const conflict = await checkConflict(dayRaw, startTime, endTime, venue.id);
+      if (conflict) { errors.push(`Row ${rowNum} "${title}": ${conflict}`); continue; }
+
+      await prisma.event.create({
+        data: { title, description, day: dayRaw, startTime, endTime, venueId: venue.id, categoryId: category.id },
+      });
+      imported++;
+    } catch (e) {
+      errors.push(`Row ${rowNum}: ${(e as Error).message}`);
+    }
+  }
+
+  await logActivity({
+    userId: user.id,
+    action: "IMPORT_SCHEDULE",
+    entityType: "Event",
+    summary: `Imported ${imported} events from CSV`,
+  });
+
+  revalidatePath("/schedule");
+  return { imported, skipped, errors };
+}
