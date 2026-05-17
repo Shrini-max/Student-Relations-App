@@ -29,7 +29,7 @@ export default async function VenuesPage() {
       {/* Add venue form */}
       <div className="card p-5">
         <h2 className="section-title mb-4">Add Venue</h2>
-        <form action={createVenue} className="flex gap-3">
+        <form action={async (fd) => { await createVenue(fd); }} className="flex gap-3">
           <input name="name" className="input flex-1" placeholder="Venue name" required />
           <input name="capacity" type="number" className="input w-32" placeholder="Capacity" min={1} />
           <button type="submit" className="btn-primary whitespace-nowrap">Add Venue</button>

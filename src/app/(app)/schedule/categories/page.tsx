@@ -29,7 +29,7 @@ export default async function CategoriesPage() {
       {/* Add category form */}
       <div className="card p-5">
         <h2 className="section-title mb-4">Add Category</h2>
-        <form action={createCategory} className="flex gap-3 items-end">
+        <form action={async (fd) => { await createCategory(fd); }} className="flex gap-3 items-end">
           <div className="flex-1">
             <label className="label">Name</label>
             <input name="name" className="input" placeholder="e.g. Cultural, Technical" required />
